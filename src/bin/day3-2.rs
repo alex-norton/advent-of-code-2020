@@ -8,16 +8,16 @@ fn main() {
     let width = grid[0].len();
     let height = grid.len();
 
-    let slopes = vec![(1, 1), (1, 3), (1, 5), (1, 7), (2, 1)];
-    let product = slopes
+    let slopes = [(1, 1), (1, 3), (1, 5), (1, 7), (2, 1)];
+    let product: usize = slopes
         .iter()
         .map(|(x, y)| {
             (0..height)
-                .map(|s| (s * x, s * y % &width))
+                .map(|s| (s * x, s * y % width))
                 .filter(|(i, _)| i < &height)
                 .filter(|(i, j)| grid[*i][*j] == '#')
                 .count()
         })
-        .fold(1, |a, x| a * x);
+        .product();
     println!("{}", product)
 }
