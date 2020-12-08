@@ -79,16 +79,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let colors = all_colors();
     let graph = graph(&colors);
     let shiny_gold: &str = get(&colors, "shiny gold");
-    let mut to_visit: Vec<&str> = vec![shiny_gold];
-    let mut visited: HashSet<&str> = HashSet::new();
-    while let Some(node) = to_visit.pop() {
-        visited.insert(node);
-        for n in graph.neighbors(node) {
-            if !visited.contains(n) {
-                to_visit.push(n);
-            }
-        }
-    }
     println!("{}", num_bags(&graph, shiny_gold) - 1);
     Ok(())
 }
