@@ -43,7 +43,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Override input with custom handling
-    // rules.insert(8, Rule::Eight);
+    rules.insert(8, Rule::Eight);
     // rules.insert(11, Rule::Eleven);
 
     let count = sections
@@ -78,16 +78,24 @@ fn check(rules: &Rules, index: u32, targets: HashSet<&'static str>) -> HashSet<&
             }
             Rule::Branch(groups) => {
                 for group in groups {
-                    // Assume that they are kind, and that if a string matches many rule groups,
-                    // it will always have the same length match, and so we don't have to backtrack.
                     let mut rem = vec![target].into_iter().collect::<HashSet<&'static str>>();
                     for i in group {
                         rem = check(rules, *i, rem);
                     }
-                    ret = ret.union(&rem).map(|s| *s).collect();
+                    rem.iter().for_each(|r| {
+                        ret.insert(r);
+                    });
                 }
             }
-            Rule::Eight => {}
+            Rule::Eight => {
+                let mut rem = vec![target].into_iter().collect::<HashSet<&'static str>>();
+                while rem.len() > 0 {
+                    rem = check(rules, 42, rem);
+                    rem.iter().for_each(|r| {
+                        ret.insert(r);
+                    })
+                }
+            }
             Rule::Eleven => {}
         }
     }
