@@ -1,7 +1,7 @@
 use std::fs::read_to_string;
 
 fn main() {
-    let max = read_to_string("data/day5input")
+    let max = read_to_string("../../data/day5input")
         .unwrap()
         .split('\n')
         .map(|line| {
