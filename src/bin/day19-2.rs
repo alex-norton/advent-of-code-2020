@@ -1,15 +1,21 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 /*
+Hardcode:
+8: 42 | 42 8
+11: 42 31 | 42 11 31
+with special handling
+
+note that 42 and 31 always match to length 8
 rule 42: length 8
 rule 31: length 8
-
-rule 8: length 8
-rule 11: length 16
 */
 enum Rule {
     Atom(&'static str),
     Branch(Vec<Vec<u32>>),
+    Eight,
+    Eleven,
 }
 
 type Rules = HashMap<u32, Rule>;
@@ -36,54 +42,54 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    for i in 8..9 {
-        for j in 0..2_usize.pow(i as u32) {
-            let s = to_n_bits(j, i);
-            if let Some("") = check(&rules, 31, &s) {
-                println!("{}", s);
-            }
-        }
-    }
+    // Override input with custom handling
+    // rules.insert(8, Rule::Eight);
+    // rules.insert(11, Rule::Eleven);
 
+    let count = sections
+        .next()
+        .unwrap()
+        .split('\n')
+        .filter(|s| {
+            check(
+                &rules,
+                0,
+                vec![*s].into_iter().collect::<HashSet<&'static str>>(),
+            )
+            .iter()
+            .any(|t| *t == "")
+        })
+        .count();
+
+    println!("{}", count);
     Ok(())
 }
 
 // On successful match, returns the remaining unmatched portion of the str.
-fn check<'a>(rules: &Rules, index: u32, target: &'a str) -> Option<&'a str> {
+fn check(rules: &Rules, index: u32, targets: HashSet<&'static str>) -> HashSet<&'static str> {
     let rule = rules.get(&index).unwrap();
-    match rule {
-        Rule::Atom(s) => match target.starts_with(s) {
-            true => Some(&target[s.len()..]),
-            false => None,
-        },
-        Rule::Branch(groups) => {
-            for group in groups {
-                // Assume that they are kind, and that if a string matches many rule groups,
-                // it will always have the same length match, and so we don't have to backtrack.
-                let mut rem = Some(target);
-                for i in group {
-                    if let Some(r) = rem {
-                        rem = check(rules, *i, r);
-                    }
-                }
-                match rem {
-                    None => continue,
-                    Some(_) => return rem,
+    let mut ret = HashSet::<&'static str>::new();
+    for target in targets {
+        match rule {
+            Rule::Atom(s) => {
+                if target.starts_with(s) {
+                    ret.insert(&target[s.len()..]);
                 }
             }
-            None
+            Rule::Branch(groups) => {
+                for group in groups {
+                    // Assume that they are kind, and that if a string matches many rule groups,
+                    // it will always have the same length match, and so we don't have to backtrack.
+                    let mut rem = vec![target].into_iter().collect::<HashSet<&'static str>>();
+                    for i in group {
+                        rem = check(rules, *i, rem);
+                    }
+                    ret = ret.union(&rem).map(|s| *s).collect();
+                }
+            }
+            Rule::Eight => {}
+            Rule::Eleven => {}
         }
     }
-}
-fn to_n_bits(x: usize, n: usize) -> String {
-    let mut bits = format!("{:b}", x).chars().collect::<Vec<char>>();
-    let mut full_bits = vec!['0'; n - bits.len()];
-    full_bits.append(&mut bits);
-    full_bits
-        .iter()
-        .map(|c| match c {
-            '0' => 'a',
-            _ => 'b',
-        })
-        .collect()
+    ret
 }
