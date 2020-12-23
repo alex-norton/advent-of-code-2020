@@ -2,14 +2,8 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 
 /*
-Hardcode:
-8: 42 | 42 8
-11: 42 31 | 42 11 31
-with special handling
-
-note that 42 and 31 always match to length 8
-rule 42: length 8
-rule 31: length 8
+Expand Part 1 to allow a single rule produce matches of different lengths.
+Hardcode handling for rule 8 and rule 11.
 */
 enum Rule {
     Atom(&'static str),
@@ -44,7 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Override input with custom handling
     rules.insert(8, Rule::Eight);
-    // rules.insert(11, Rule::Eleven);
+    rules.insert(11, Rule::Eleven);
 
     let count = sections
         .next()
@@ -65,7 +59,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-// On successful match, returns the remaining unmatched portion of the str.
+// Applies rule on each target to create a set of possible remaining substrings
 fn check(rules: &Rules, index: u32, targets: HashSet<&'static str>) -> HashSet<&'static str> {
     let rule = rules.get(&index).unwrap();
     let mut ret = HashSet::<&'static str>::new();
@@ -88,6 +82,7 @@ fn check(rules: &Rules, index: u32, targets: HashSet<&'static str>) -> HashSet<&
                 }
             }
             Rule::Eight => {
+                // 8: 42 | 42 8
                 let mut rem = vec![target].into_iter().collect::<HashSet<&'static str>>();
                 while rem.len() > 0 {
                     rem = check(rules, 42, rem);
@@ -96,7 +91,23 @@ fn check(rules: &Rules, index: u32, targets: HashSet<&'static str>) -> HashSet<&
                     })
                 }
             }
-            Rule::Eleven => {}
+            Rule::Eleven => {
+                // 11: 42 31 | 42 11 31
+                // Note that 42 and 31 only match length 8 patterns, so we know how many possible
+                // iterations of it we need to check.
+                let times = target.len() / 8;
+                for i in 1..=times {
+                    let mut group = vec![42; i];
+                    group.append(&mut vec![31; i]);
+                    let mut rem = vec![target].into_iter().collect::<HashSet<&'static str>>();
+                    for j in group {
+                        rem = check(rules, j, rem);
+                    }
+                    rem.iter().for_each(|r| {
+                        ret.insert(r);
+                    });
+                }
+            }
         }
     }
     ret
