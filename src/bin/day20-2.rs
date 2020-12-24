@@ -14,12 +14,14 @@ struct Tile {
     right: Edge,
     bottom: Edge,
     left: Edge,
+    image: Vec<Vec<char>>,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // stores all tile variants for each id
     let mut tiles = HashSet::<Tile>::new();
     let mut num_tiles = 0;
+
     read_to_string("data/day20input")?
         .split("\n\n")
         .for_each(|s| {
@@ -33,35 +35,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let data = lines
                 .map(|l| l.chars().collect::<Vec<char>>())
                 .collect::<Vec<_>>();
-            let height = data.len();
-            let width = data[0].len();
 
-            let top: Edge = (0..width).map(|i| data[0][i]).collect();
-            let top_rev: Edge = (0..width).rev().map(|i| data[0][i]).collect();
-            let right: Edge = (0..height).map(|i| data[i][width - 1]).collect();
-            let right_rev: Edge = (0..height).rev().map(|i| data[i][width - 1]).collect();
-            let bottom: Edge = (0..width).map(|i| data[height - 1][i]).collect();
-            let bottom_rev: Edge = (0..width).rev().map(|i| data[height - 1][i]).collect();
-            let left: Edge = (0..height).map(|i| data[i][0]).collect();
-            let left_rev: Edge = (0..height).rev().map(|i| data[i][0]).collect();
-            // These correspond to rotating clockwise 4 times, and flipping each horizontally.
-            // I couldn't find any other operations that produced distinct sides.
-            for (t, r, b, l) in &[
-                (&top, &right, &bottom, &left),
-                (&left_rev, &top, &right_rev, &bottom),
-                (&bottom_rev, &left_rev, &top_rev, &right_rev),
-                (&right, &bottom_rev, &left, &top_rev),
-                (&top_rev, &left, &bottom_rev, &right),
-                (&left, &bottom, &right, &top),
-                (&bottom, &right_rev, &top, &left_rev),
-                (&right_rev, &top_rev, &left_rev, &bottom_rev),
-            ] {
+            for chars in all_variations(data) {
+                let height = chars.len();
+                let width = chars[0].len();
+                let top: Edge = (0..width).map(|i| chars[0][i]).collect();
+                let right: Edge = (0..height).map(|i| chars[i][width - 1]).collect();
+                let bottom: Edge = (0..width).map(|i| chars[height - 1][i]).collect();
+                let left: Edge = (0..height).map(|i| chars[i][0]).collect();
+                let image = (1..height - 1)
+                    .map(|i| (1..width - 1).map(|j| chars[i][j]).collect())
+                    .collect();
                 let tile = Tile {
-                    id: id,
-                    top: (*t).clone(),
-                    right: (*r).clone(),
-                    bottom: (*b).clone(),
-                    left: (*l).clone(),
+                    id,
+                    top,
+                    right,
+                    bottom,
+                    left,
+                    image,
                 };
                 tiles.insert(tile);
             }
@@ -105,6 +96,36 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bottom_right = puzzle[dims - 1][dims - 1].unwrap().id;
     println!("{}", top_left * top_right * bottom_left * bottom_right);
     Ok(())
+}
+
+fn all_variations(chars: Vec<Vec<char>>) -> Vec<Vec<Vec<char>>> {
+    let mut variations = Vec::new();
+    // Untouched
+    variations.push(chars);
+    variations.push(rotate_cw(&variations[0]));
+    variations.push(rotate_cw(&variations[1]));
+    variations.push(rotate_cw(&variations[2]));
+    variations.push(flip_horiz(&variations[0]));
+    variations.push(flip_horiz(&variations[1]));
+    variations.push(flip_horiz(&variations[2]));
+    variations.push(flip_horiz(&variations[3]));
+    variations
+}
+
+fn rotate_cw(chars: &Vec<Vec<char>>) -> Vec<Vec<char>> {
+    let height = chars.len();
+    let width = chars[0].len();
+    (0..width)
+        .map(|i| (0..height).rev().map(|j| chars[j][i]).collect())
+        .collect()
+}
+
+fn flip_horiz(chars: &Vec<Vec<char>>) -> Vec<Vec<char>> {
+    let height = chars.len();
+    let width = chars[0].len();
+    (0..height)
+        .map(|i| (0..width).rev().map(|j| chars[i][j]).collect())
+        .collect()
 }
 
 fn solve<'a>(
