@@ -2,10 +2,6 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs::read_to_string;
 
-/**
- * We could probably do some clever variant of KMP to speed this up, but let's
- * just brute force every sea monster orientation.
- */
 type Edge = Vec<char>;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Tile {
@@ -90,11 +86,75 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if !solve(&mut puzzle, &mut used, &tiles, &lefts, &tops, dims, 0, 0) {
         panic!("No solution found.");
     }
-    let top_left = puzzle[0][0].unwrap().id;
-    let top_right = puzzle[0][dims - 1].unwrap().id;
-    let bottom_left = puzzle[dims - 1][0].unwrap().id;
-    let bottom_right = puzzle[dims - 1][dims - 1].unwrap().id;
-    println!("{}", top_left * top_right * bottom_left * bottom_right);
+
+    let any_tile = &puzzle[0][0].unwrap().image;
+    // Assume tiles are square
+    let t_dims = any_tile.len();
+    let mut image: Vec<Vec<char>> = vec![vec!['0'; dims * t_dims]; dims * t_dims];
+    let mut hashes = HashMap::<(usize, usize), bool>::new();
+    for i in 0..dims {
+        for j in 0..dims {
+            let tile = &puzzle[i][j].unwrap().image;
+            for t_i in 0..t_dims {
+                for t_j in 0..t_dims {
+                    let i_i = i * t_dims + t_i;
+                    let i_j = j * t_dims + t_j;
+                    image[i_i][i_j] = tile[t_i][t_j];
+                    if image[i_i][i_j] == '#' {
+                        hashes.insert((i_i, i_j), false);
+                    }
+                }
+            }
+        }
+    }
+    let sea_monster = vec![
+        vec![
+            ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+            ' ', '#', ' ',
+        ],
+        vec![
+            '#', ' ', ' ', ' ', ' ', '#', '#', ' ', ' ', ' ', ' ', '#', '#', ' ', ' ', ' ', ' ',
+            '#', '#', '#',
+        ],
+        vec![
+            ' ', '#', ' ', ' ', '#', ' ', ' ', '#', ' ', ' ', '#', ' ', ' ', '#', ' ', ' ', '#',
+            ' ', ' ', ' ',
+        ],
+    ];
+    let i_height = image.len();
+    let i_width = image[0].len();
+    for m in all_variations(sea_monster) {
+        let m_height = m.len();
+        let m_width = m[0].len();
+        // We could probably do some clever variant of KMP to speed this up, but let's just brute force.
+        for i in 0..i_height - m_height {
+            'outer: for j in 0..i_width - m_width {
+                let mut m_hashes = HashSet::<(usize, usize)>::new();
+                for m_i in 0..m_height {
+                    for m_j in 0..m_width {
+                        if m[m_i][m_j] != '#' {
+                            continue;
+                        } else {
+                            if image[i + m_i][j + m_j] != '#' {
+                                // Skip to next monster position
+                                continue 'outer;
+                            } else {
+                                m_hashes.insert((i + m_i, j + m_j));
+                            }
+                        }
+                    }
+                }
+                // Because of the labelled continue, this is only reached if the whole monster is found.
+                for hash in m_hashes {
+                    hashes.insert(hash, true);
+                }
+            }
+        }
+    }
+
+    let count = hashes.iter().filter(|(_, b)| **b == false).count();
+    println!("{}", count);
+
     Ok(())
 }
 
@@ -153,13 +213,9 @@ fn solve<'a>(
         return try_tiles(candidates, puzzle, used, tiles, lefts, tops, dims, h, w);
     } else {
         let right_edge = &puzzle[h][w - 1].unwrap().right;
-        let right_candidates = get_unused(lefts, right_edge, used)
-            .into_iter()
-            .collect::<HashSet<&Tile>>();
+        let right_candidates = get_unused(lefts, right_edge, used);
         let bottom_edge = &puzzle[h - 1][w].unwrap().bottom;
-        let bottom_candidates = get_unused(tops, bottom_edge, used)
-            .into_iter()
-            .collect::<HashSet<&Tile>>();
+        let bottom_candidates = get_unused(tops, bottom_edge, used);
         return try_tiles(
             right_candidates
                 .intersection(&bottom_candidates)
@@ -236,7 +292,7 @@ fn get_unused<'a>(
     candidates: &HashMap<Edge, HashSet<&'a Tile>>,
     edge: &Edge,
     used: &HashSet<usize>,
-) -> Vec<&'a Tile> {
+) -> HashSet<&'a Tile> {
     candidates
         .get(edge)
         .unwrap()
