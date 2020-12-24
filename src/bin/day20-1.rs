@@ -1,11 +1,12 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fs::read_to_string;
 
 // https://brilliant.org/wiki/recursive-backtracking/ to structure backtracking
 // total tiles = 144 -> 12 by 12 solution
 // also, no tile has the same edge on multiple places (thankfully)
 type Edge = Vec<char>;
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Tile {
     id: usize,
     top: Edge,
@@ -16,7 +17,7 @@ struct Tile {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // stores all tile variants for each id
-    let mut tiles = HashMap::<usize, Vec<Tile>>::new();
+    let mut tiles = Vec::<Tile>::new();
     read_to_string("data/test")?.split("\n\n").for_each(|s| {
         let mut lines = s.lines();
         let id_line = lines.next().unwrap();
@@ -38,6 +39,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let bottom_rev: Edge = (0..width).rev().map(|i| data[height - 1][i]).collect();
         let left: Edge = (0..height).map(|i| data[i][0]).collect();
         let left_rev: Edge = (0..height).rev().map(|i| data[i][0]).collect();
+        // These correspond to rotating clockwise 4 times, and flipping each horizontally.
+        // I couldn't find any other operations that produced distinct sides.
         for (t, r, b, l) in &[
             (&top, &right, &bottom, &left),
             (&left_rev, &top, &right_rev, &bottom),
@@ -55,8 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 bottom: (*b).clone(),
                 left: (*l).clone(),
             };
-            let entry = tiles.entry(id);
-            entry.or_insert_with(Vec::new).push(tile);
+            tiles.push(tile);
         }
     });
     // we fill puzzle left to right, top to bottom
@@ -64,21 +66,132 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // new tiles left edge and top edge
     let mut lefts = HashMap::<Edge, Vec<&Tile>>::new();
     let mut tops = HashMap::<Edge, Vec<&Tile>>::new();
-    for (_, v) in &tiles {
-        for t in v {
-            match lefts.get_mut(&t.left) {
-                Some(v) => v.push(t),
-                None => {
-                    lefts.insert(t.left.clone(), vec![t]);
-                }
+    for t in &tiles {
+        match lefts.get_mut(&t.left) {
+            Some(v) => v.push(t),
+            None => {
+                lefts.insert(t.left.clone(), vec![t]);
             }
-            match tops.get_mut(&t.top) {
-                Some(v) => v.push(t),
-                None => {
-                    tops.insert(t.top.clone(), vec![t]);
-                }
+        }
+        match tops.get_mut(&t.top) {
+            Some(v) => v.push(t),
+            None => {
+                tops.insert(t.top.clone(), vec![t]);
             }
         }
     }
+    let dims = (tiles.len() as f64).sqrt() as usize;
+    let mut puzzle: Vec<Vec<Option<&Tile>>> = vec![vec![None; dims]; dims];
+    let mut used: HashSet<usize> = HashSet::new();
+    if !solve(&mut puzzle, &mut used, &tiles, &lefts, &tops, dims, 0, 0) {
+        panic!("No solution found.");
+    }
     Ok(())
+}
+
+fn solve<'a>(
+    puzzle: &mut Vec<Vec<Option<&'a Tile>>>,
+    used: &mut HashSet<usize>,
+    tiles: &'a Vec<Tile>,
+    lefts: &HashMap<Edge, Vec<&'a Tile>>,
+    tops: &HashMap<Edge, Vec<&'a Tile>>,
+    dims: usize,
+    h: usize,
+    w: usize,
+) -> bool {
+    if h == dims {
+        return true;
+    }
+    if h == 0 && w == 0 {
+        for tile in tiles {
+            let solved = try_tile(tile, puzzle, used, tiles, lefts, tops, dims, h, w);
+            if solved {
+                return true;
+            }
+        }
+        return false;
+    } else if h == 0 {
+        let right_edge = &puzzle[h][w - 1].unwrap().right;
+        let candidates = get_unused(lefts, right_edge, used);
+        for tile in candidates {
+            let solved = try_tile(tile, puzzle, used, tiles, lefts, tops, dims, h, w);
+            if solved {
+                return true;
+            }
+        }
+        return false;
+    } else if w == 0 {
+        let bottom_edge = &puzzle[h - 1][w].unwrap().bottom;
+        let candidates = get_unused(tops, bottom_edge, used);
+        for tile in candidates {
+            let solved = try_tile(tile, puzzle, used, tiles, lefts, tops, dims, h, w);
+            if solved {
+                return true;
+            }
+        }
+        return false;
+    } else {
+        let right_edge = &puzzle[h][w - 1].unwrap().right;
+        let right_candidates = get_unused(lefts, right_edge, used)
+            .into_iter()
+            .collect::<HashSet<&Tile>>();
+        let bottom_edge = &puzzle[h - 1][w].unwrap().bottom;
+        let bottom_candidates = get_unused(tops, bottom_edge, used)
+            .into_iter()
+            .collect::<HashSet<&Tile>>();
+        for tile in right_candidates.intersection(&bottom_candidates) {
+            let solved = try_tile(tile, puzzle, used, tiles, lefts, tops, dims, h, w);
+            if solved {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+fn try_tile<'a>(
+    tile: &'a Tile,
+    puzzle: &mut Vec<Vec<Option<&'a Tile>>>,
+    used: &mut HashSet<usize>,
+    tiles: &'a Vec<Tile>,
+    lefts: &HashMap<Edge, Vec<&'a Tile>>,
+    tops: &HashMap<Edge, Vec<&'a Tile>>,
+    dims: usize,
+    h: usize,
+    w: usize,
+) -> bool {
+    puzzle[h][w] = Some(tile);
+    used.insert(tile.id);
+
+    let next_h;
+    let next_w;
+    if w == dims - 1 {
+        next_h = h + 1;
+        next_w = 0;
+    } else {
+        next_h = h;
+        next_w = w + 1;
+    }
+
+    let solved = solve(puzzle, used, tiles, lefts, tops, dims, next_h, next_w);
+    if solved {
+        return true;
+    }
+    puzzle[h][w] = None;
+    used.remove(&tile.id);
+    return false;
+}
+
+fn get_unused<'a>(
+    candidates: &HashMap<Edge, Vec<&'a Tile>>,
+    edge: &Edge,
+    used: &HashSet<usize>,
+) -> Vec<&'a Tile> {
+    candidates
+        .get(edge)
+        .unwrap()
+        .iter()
+        .filter(|t| !used.contains(&t.id))
+        .map(|t| *t)
+        .collect()
 }
