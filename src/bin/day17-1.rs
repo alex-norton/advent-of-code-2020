@@ -10,6 +10,7 @@ use std::fs::read_to_string;
 // -4..=4, -2..=2, -1..=1 at first evolution, -5..=5, -3..=3, -2..=2 at second.
 // to check final active count, iterate through all entries.
 type Coord = (isize, isize, isize);
+// in hindsight, this should just be a HashSet
 type State = HashMap<Coord, bool>;
 
 fn count(state: &State, coord: Coord) -> usize {
