@@ -5,9 +5,7 @@ use std::fs::read_to_string;
    - starting at the index and work backwards up the list, summing as you go.
    - all inputs are positive, so if you exceed the target you can stop early
    - O(n^2) "re-sums" many chunks repeatedly.
-   - no need to do backwards, just start and go forwards
-   - can probably do better with a sliding window?
-   - TODO: convince yourself sliding window doesn't miss a sum, by contradiction
+   - next time use a sliding window instead
 */
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

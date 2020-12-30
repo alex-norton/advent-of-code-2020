@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::fs::read_to_string;
 use std::time::Instant;
 
-// Why is this so slow?
 fn main() {
     let now = Instant::now();
     let seed: Vec<usize> = read_to_string("data/day15input")

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::fs::read_to_string;
 
 // Keep a HashSet of (i64, i64, i64) to boolean as board state, and clone it every time.
-// Biggest difference: how to determine how much of space to check?
+// Biggest difference from previous Conway: how to determine how much of space to check?
 // Simplest: dimensions can grow by at most one per time step.
 // Start with 1 + start dims and check negative to positive on all of them.
 // i.e. if starting with a 3x1 grid, we start with 4, 2, 1 and check

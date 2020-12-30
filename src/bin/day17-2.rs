@@ -2,13 +2,6 @@ use std::cmp;
 use std::collections::HashMap;
 use std::fs::read_to_string;
 
-// Keep a HashSet of (i64, i64, i64) to boolean as board state, and clone it every time.
-// Biggest difference: how to determine how much of space to check?
-// Simplest: dimensions can grow by at most one per time step.
-// Start with 1 + start dims and check negative to positive on all of them.
-// i.e. if starting with a 3x1 grid, we start with 4, 2, 1 and check
-// -4..=4, -2..=2, -1..=1 at first evolution, -5..=5, -3..=3, -2..=2 at second.
-// to check final active count, iterate through all entries.
 type Coord = (isize, isize, isize, isize);
 type State = HashMap<Coord, bool>;
 
