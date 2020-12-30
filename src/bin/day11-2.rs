@@ -9,7 +9,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         let next = evolve(&cur);
         if next == cur {
-            print(&cur);
             println!(
                 "{}",
                 cur.iter()
@@ -63,12 +62,4 @@ fn count(b: &Board, i: usize, j: usize) -> usize {
         }
     }
     count
-}
-
-fn print(b: &Board) {
-    b.iter().for_each(|i| {
-        i.iter().for_each(|j| print!("{}", j));
-        print!("\n");
-    });
-    print!("\n");
 }
