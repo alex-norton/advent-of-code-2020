@@ -14,7 +14,7 @@ use std::fs::read_to_string;
  */
 const MS: usize = 9;
 const MI: u32 = 9;
-const I: usize = 10;
+const I: usize = 100;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut buffer_v = vec![0; MS];
@@ -40,31 +40,61 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("taken: {:?}", elem);
         let target_val = find_target(cur_val, &elem);
         println!("target_val: {}", target_val);
-        let mut target_pos = buffer.iter().position(|&x| x == target_val).unwrap();
+        let target_pos = buffer.iter().position(|&x| x == target_val).unwrap();
         println!("target_pos: {}", target_val);
-        if target_pos + 3 >= MS {
-            // amount to rot left to put 3 at end of buffer
-            let shift_amount = target_pos + 4 - MS;
-            println!("rotated at {}", i);
-            buffer.rotate_left(shift_amount);
-            target_pos = MS - 4;
-            cur_pos = shift(cur_pos, shift_amount);
-            println!("rotated buffer: {:?}", buffer);
-            println!("rotated cur_pos: {}", cur_pos);
-            println!("rotated target_pos: {}", target_pos);
+        let mut new_buffer = vec![0; MS].into_boxed_slice();
+
+        if (cur_pos == target_pos) {
+            println!("Skip");
+            cur_pos = (cur_pos + 1) % MS;
+            continue;
         }
-        if cur_pos < target_pos {
-            buffer.copy_within((cur_pos + 4)..=target_pos, cur_pos + 1);
-            buffer[(target_pos - 2)..(target_pos + 1)].copy_from_slice(&elem);
-        } else if target_pos < cur_pos {
-            buffer.copy_within((target_pos + 1)..=cur_pos, target_pos + 4);
-            buffer[(target_pos + 1)..(target_pos + 4)].copy_from_slice(&elem);
+
+        // copy current
+        let mut new_pos = 0;
+        new_buffer[new_pos] = buffer[cur_pos];
+        new_pos += 1;
+        println!("After copy current: {:?}", new_buffer);
+
+        // copy past current to target
+        let after_cur = (cur_pos + 4) % MS;
+        if target_pos >= after_cur {
+            let b = &buffer[after_cur..=target_pos];
+            &new_buffer[new_pos..new_pos + b.len()].copy_from_slice(b);
+            new_pos += b.len();
+            println!("After copy past current: {:?}", new_buffer);
         } else {
-            println!("target = cur");
+            let b = &buffer[after_cur..];
+            &new_buffer[new_pos..new_pos + b.len()].copy_from_slice(b);
+            new_pos += b.len();
+            let b = &buffer[..=target_pos];
+            &new_buffer[new_pos..new_pos + b.len()].copy_from_slice(b);
+            new_pos += b.len();
+            println!("After copy past edge and current: {:?}", new_buffer);
         }
+        // copy elements
+        &new_buffer[new_pos..new_pos + 3].copy_from_slice(&elem);
+        new_pos += 3;
+        println!("After copy elements: {:?}", new_buffer);
+        // copy from target back to current
+        let after_tar = (target_pos + 1) % MS;
+        if cur_pos >= after_tar {
+            let b = &buffer[after_tar..cur_pos];
+            &new_buffer[new_pos..new_pos + b.len()].copy_from_slice(b);
+            println!("After copy passed target: {:?}", new_buffer);
+        } else {
+            let b = &buffer[after_tar..];
+            &new_buffer[new_pos..new_pos + b.len()].copy_from_slice(b);
+            new_pos += b.len();
+            let b = &buffer[..cur_pos];
+            &new_buffer[new_pos..new_pos + b.len()].copy_from_slice(b);
+            println!("After copy passed edge and target: {:?}", new_buffer);
+        }
+
+        buffer = new_buffer;
         println!("\nbuffer: {:?}", buffer);
 
-        cur_pos = (cur_pos + 1) % MS;
+        cur_pos = 1;
     }
     let one_pos = buffer.iter().position(|&x| x == 1).unwrap();
     /*
@@ -79,18 +109,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     print!("\n");
 
     Ok(())
-}
-
-fn shift(start: usize, amount: usize) -> usize {
-    let mut ret = start;
-    for _ in 0..amount {
-        if ret == 0 {
-            ret = MS - 1;
-        } else {
-            ret -= 1;
-        }
-    }
-    ret
 }
 
 fn find_target(start: u32, avoid: &[u32]) -> u32 {
