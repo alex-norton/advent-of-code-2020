@@ -1,61 +1,69 @@
+use itertools::Itertools;
+use std::collections::HashMap;
 use std::fs::read_to_string;
 
-/**
- * Man this is messy
- */
+const MS: usize = 9;
+const MI: u32 = 9;
+const I: usize = 100;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut buffer = read_to_string("data/day23input")?
+    let mut input = vec![0; MS];
+    read_to_string("data/day23input")?
         .chars()
-        .map(|c| c.to_digit(10).unwrap() as usize)
-        .collect::<Vec<_>>();
-    let max = buffer.len();
-    let mut cur_pos = 0;
-    for _ in 0..100 {
-        let cur_val = buffer[cur_pos];
-        let mut remove_pos = (cur_pos + 1) % buffer.len();
-        let one = buffer.remove(remove_pos);
-        if remove_pos < cur_pos {
-            cur_pos -= 1;
-        } else {
-            remove_pos = (cur_pos + 1) % buffer.len();
-        }
-        let two = buffer.remove(remove_pos);
-        if remove_pos < cur_pos {
-            cur_pos -= 1;
-        } else {
-            remove_pos = (cur_pos + 1) % buffer.len();
-        }
-        let three = buffer.remove(remove_pos);
-        if remove_pos < cur_pos {
-            cur_pos -= 1;
-        }
-        let mut target = shift_target(cur_val, max);
-        while target == one || target == two || target == three {
-            target = shift_target(target, max);
-        }
-        let target_pos = (buffer.iter().position(|&x| x == target).unwrap() + 1) % buffer.len();
-        buffer.insert(target_pos, three);
-        buffer.insert(target_pos, two);
-        buffer.insert(target_pos, one);
-        if target_pos <= cur_pos {
-            cur_pos += 3;
-        }
-        cur_pos = (cur_pos + 1) % buffer.len();
+        .enumerate()
+        .for_each(|(i, c)| input[i] = c.to_digit(10).unwrap());
+    for i in 10..=MS {
+        input[i - 1] = i as u32;
     }
-    let one_pos = buffer.iter().position(|&x| x == 1).unwrap();
-    for i in 0..max - 1 {
-        print!("{}", buffer[(one_pos + 1 + i) % max]);
+    let mut map = HashMap::<u32, u32>::with_capacity(MS);
+    for (a, b) in input.iter().tuple_windows() {
+        map.insert(*a, *b);
     }
-    print!("\n");
+    map.insert(input[MS - 1], input[0]);
+
+    let mut cur = input[0];
+
+    for _ in 0..I {
+        let one = map[&cur];
+        let two = map[&one];
+        let three = map[&two];
+        let target = find_target(cur, &[one, two, three]);
+        let after_three = map[&three];
+        let after_target = map[&target];
+
+        map.insert(cur, after_three);
+        map.insert(target, one);
+        map.insert(three, after_target);
+
+        cur = map[&cur];
+    }
+
+    print_map(&map, 1);
 
     Ok(())
 }
 
-fn shift_target(i: usize, m: usize) -> usize {
-    let ret = (i as isize) - 1;
-    if ret == 0 {
-        m
-    } else {
-        ret as usize
+fn print_map(map: &HashMap<u32, u32>, start: u32) {
+    let mut i = map[&start];
+    while i != start {
+        print!("{}", i);
+        i = map[&i];
     }
+    println!("");
+}
+
+fn find_target(start: u32, avoid: &[u32]) -> u32 {
+    let mut ret = start;
+    if ret == 1 {
+        ret = MI;
+    } else {
+        ret -= 1;
+    }
+    while let Some(_) = avoid.iter().find(|&&x| x == ret) {
+        if ret == 1 {
+            ret = MI;
+        } else {
+            ret -= 1;
+        }
+    }
+    ret
 }
