@@ -4,7 +4,6 @@ use regex::Regex;
 use std::collections::HashSet;
 use std::fs::read_to_string;
 
-// This accepts one more passport than it's supposed to!
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let count = read_to_string("data/day4input")?
         .split("\n\n")
@@ -42,7 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 },
                 "hgt" => {
                     lazy_static! {
-                        static ref HGT: Regex = Regex::new(r"(\d+)(cm|in)").unwrap();
+                        static ref HGT: Regex = Regex::new(r"^(\d+)(cm|in)$").unwrap();
                     }
                     match HGT.captures(v) {
                         Some(cap) => {
@@ -57,19 +56,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 "hcl" => {
                     lazy_static! {
-                        static ref HCL: Regex = Regex::new("#[0-9a-f]{6}").unwrap();
+                        static ref HCL: Regex = Regex::new(r"^#[0-9a-f]{6}$").unwrap();
                     }
                     HCL.is_match(v)
                 }
                 "ecl" => {
                     lazy_static! {
-                        static ref ECL: Regex = Regex::new("amb|blu|brn|gry|grn|hzl|oth").unwrap();
+                        static ref ECL: Regex =
+                            Regex::new(r"^(amb|blu|brn|gry|grn|hzl|oth)$").unwrap();
                     }
                     ECL.is_match(v)
                 }
                 "pid" => {
                     lazy_static! {
-                        static ref PID: Regex = Regex::new("[0-9]{9}").unwrap();
+                        static ref PID: Regex = Regex::new(r"^[0-9]{9}$").unwrap();
                     }
                     PID.is_match(v)
                 }
